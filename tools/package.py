@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Stage only this standalone module; do not touch an installed control centre."""
 from pathlib import Path
-import gzip,io,json,shutil,tarfile
+import gzip,io,json,re,shutil,tarfile
 from mkdeb import pack
-from simcontrol import ROOT,BUNDLE,HELPER,PROVENANCE,DEB,HELPER_SHA256,RESOURCE_HASHES,RESOURCE_PATHS,sha256,require,module_plist,control_fields,macho
+from simcontrol import ROOT,BUNDLE,HELPER,PROVENANCE,DEB,ARCH,HELPER_SHA256,RESOURCE_HASHES,RESOURCE_PATHS,sha256,require,module_plist,control_fields,macho
 
 def archive(root,out):
     buffer=io.BytesIO()
@@ -24,7 +24,10 @@ def main():
     helper=(ROOT/'Vendor/CCSIMTool').read_bytes();require(sha256(helper)==HELPER_SHA256,'helper changed')
     module=(ROOT/'build/SIMControl').read_bytes();macho(module,module=True);macho(helper)
     info=(ROOT/'Resources/Info.plist').read_bytes();module_plist(info)
-    text=(ROOT/'control').read_bytes();control_fields(text)
+    template=(ROOT/'control').read_text(encoding='utf-8')
+    text=re.sub(r'^Architecture: .*$', 'Architecture: '+ARCH, template, flags=re.M)
+    text=re.sub(r'^Icon: .*$', 'Icon: file:///'+RESOURCE_PATHS['PackageIcon.png'], text, flags=re.M)
+    text=text.encode('utf-8');control_fields(text)
     stage=ROOT/'build/stage';members=ROOT/'build/deb-members'
     for p in (stage,members):
         if p.exists():shutil.rmtree(p)

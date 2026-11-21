@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+echo "=== SIMCONTROL_LAYOUT=${SIMCONTROL_LAYOUT:-rootless} ==="
 SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
 mkdir -p build dist
 SOURCES=(src/SIMControlModule.m src/SIMControlController.m src/SIMControlService.m src/SIMControlRow.m)

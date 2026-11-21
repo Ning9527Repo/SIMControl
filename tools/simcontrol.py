@@ -1,6 +1,7 @@
 """Shared constants and read-only Mach-O checks (Python standard library only)."""
 from pathlib import Path
 import hashlib
+import os
 import plistlib
 import struct
 
@@ -8,12 +9,20 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = 'com.ning.simcontrol'
 VERSION = '1.0.4'
 BUNDLE_ID = PACKAGE + '.module'
-BUNDLE = 'var/jb/Library/ControlCenter/Bundles/SIMControl.bundle'
-HELPER = 'var/jb/usr/libexec/SIMControl/CCSIMTool'
-PROVENANCE = 'var/jb/usr/libexec/SIMControl/provenance.json'
+# SIMCONTROL_LAYOUT=rootless (default) -> /var/jb paths, iphoneos-arm64.
+# SIMCONTROL_LAYOUT=roothide        -> real-root paths, iphoneos-arm64e.
+LAYOUT = os.environ.get('SIMCONTROL_LAYOUT', 'rootless').strip().lower()
+if LAYOUT not in ('rootless', 'roothide'):
+    raise SystemExit('unknown SIMCONTROL_LAYOUT: ' + LAYOUT)
+ROOTHIDE = LAYOUT == 'roothide'
+PREFIX = '' if ROOTHIDE else 'var/jb/'
+ARCH = 'iphoneos-arm64e' if ROOTHIDE else 'iphoneos-arm64'
+BUNDLE = PREFIX + 'Library/ControlCenter/Bundles/SIMControl.bundle'
+HELPER = PREFIX + 'usr/libexec/SIMControl/CCSIMTool'
+PROVENANCE = PREFIX + 'usr/libexec/SIMControl/provenance.json'
 HELPER_SHA256 = 'b9ef962cd0e75374c5499f955d57595ca8367b5ecb8d8c0c2d067a0849e218a9'
 PRIVATE_DYLIB = '/System/Library/PrivateFrameworks/ControlCenterUIKit.framework/ControlCenterUIKit'
-DEB = ROOT / 'dist' / f'{PACKAGE}_{VERSION}_iphoneos-arm64.deb'
+DEB = ROOT / 'dist' / f'{PACKAGE}_{VERSION}_{ARCH}.deb'
 SOURCES = tuple(f'src/SIMControl{name}.m' for name in ('Module', 'Controller', 'Service', 'Row'))
 # Selected design A: Ning's native green cellular antenna.
 RESOURCE_HASHES = {
@@ -28,7 +37,7 @@ RESOURCE_HASHES = {
     'PackageIcon@128.png': 'e576771f829acc015e7489ed64713e46410210b1858e177f41f34225408a757d',
 }
 RESOURCE_PATHS = {
-    name: (f'var/jb/usr/share/icons/{PACKAGE}{name.removeprefix("PackageIcon")}'
+    name: (f'{PREFIX}usr/share/icons/{PACKAGE}{name.removeprefix("PackageIcon")}'
            if name.startswith('PackageIcon') else f'{BUNDLE}/{name}')
     for name in RESOURCE_HASHES
 }
@@ -198,7 +207,7 @@ def control_fields(data):
         key, value = line.split(':', 1)
         require(key not in fields and value.strip(), 'duplicate or empty control field')
         fields[key] = value.strip()
-    wanted = {'Package': PACKAGE, 'Version': VERSION, 'Architecture': 'iphoneos-arm64',
+    wanted = {'Package': PACKAGE, 'Version': VERSION, 'Architecture': ARCH,
               'Maintainer': 'Ning', 'Author': 'Ning',
               'Depends': 'firmware (>= 16.0), firmware (<< 18.0), com.opa334.ccsupport',
               'Icon': f'file:///{RESOURCE_PATHS["PackageIcon.png"]}'}

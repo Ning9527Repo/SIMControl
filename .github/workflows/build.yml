@@ -6,6 +6,12 @@ permissions:
 jobs:
   build:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        layout: [rootless, roothide]
+    env:
+      SIMCONTROL_LAYOUT: ${{ matrix.layout }}
     steps:
       - uses: actions/checkout@v4
       - name: Xcode toolchain
@@ -14,8 +20,8 @@ jobs:
         run: bash tools/build-macos.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: SIMControl-1.0.4
+          name: SIMControl-1.0.4-${{ matrix.layout }}
           path: |
-            dist/*.deb
+            dist/${{ matrix.layout == 'roothide' && 'com.ning.simcontrol_1.0.4_iphoneos-arm64e.deb' || 'com.ning.simcontrol_1.0.4_iphoneos-arm64.deb' }}
             dist/package-validation.json
           if-no-files-found: error
